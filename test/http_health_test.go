@@ -7,12 +7,18 @@ import (
 
 	"coffee/internal/server"
 	"log/slog"
+
+	"github.com/gin-gonic/gin"
 )
 
 // TestHealthEndpoints verifies the health and readiness endpoints of the server.
 func TestHealthEndpoints(t *testing.T) {
 	// Create a new server instance with default logger.
-	s := server.NewServer(server.WithLogger(slog.Default()))
+	s := server.NewServer(
+		server.WithLogger(slog.Default()),
+		server.WithGinMode(gin.TestMode), // <— explicit for tests
+	)
+
 	eng := s.Engine() // Get the Gin engine from the server.
 
 	// Test the /v1/healthz endpoint.

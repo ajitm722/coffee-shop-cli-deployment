@@ -11,6 +11,7 @@ import (
 	"coffee/internal/config"
 	"coffee/internal/server"
 
+	"github.com/gin-gonic/gin"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -44,10 +45,9 @@ var serveCmd = &cobra.Command{
 		srv := server.NewServer(
 			server.WithAddr(cfg.Addr),
 			server.WithTimeouts(cfg.ReadTimeout, cfg.WriteTimeout, cfg.IdleTimeout),
-			// NEW: make shutdown timeout visible to server (for logging)
 			server.WithShutdownTimeout(cfg.ShutdownTimeout),
-			// NEW: ask server to log config at startup (functional option)
 			server.WithStartupConfigLog(),
+			server.WithGinMode(gin.ReleaseMode), // <— explicit for runtime
 		)
 
 		errCh := make(chan error, 1)

@@ -13,6 +13,8 @@ type options struct {
 	shutdownTimeout time.Duration
 	logger          *slog.Logger
 	logStartup      bool
+	ginMode         *string // nil => don't touch global gin mode
+
 }
 
 type Option func(*options)
@@ -41,4 +43,9 @@ func WithStartupConfigLog() Option {
 
 func WithLogger(l *slog.Logger) Option {
 	return func(o *options) { o.logger = l }
+}
+
+// add this function
+func WithGinMode(mode string) Option {
+	return func(o *options) { o.ginMode = &mode }
 }

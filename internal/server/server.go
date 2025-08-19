@@ -30,7 +30,9 @@ func NewServer(opts ...Option) *Server {
 		o(cfg)
 	}
 
-	gin.SetMode(gin.ReleaseMode)
+	if cfg.ginMode != nil {
+		gin.SetMode(*cfg.ginMode)
+	}
 	e := gin.New()
 	e.Use(gin.Recovery())
 	e.Use(RequestIDMiddleware())
