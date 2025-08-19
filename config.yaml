@@ -1,0 +1,6 @@
+addr: ":9090"
+read_timeout: 3s
+write_timeout: 8s
+idle_timeout: 20s
+shutdown_timeout: 4s
+
