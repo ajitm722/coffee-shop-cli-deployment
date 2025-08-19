@@ -1,6 +1,7 @@
 package server
 
 import (
+	"database/sql"
 	"log/slog"
 	"time"
 )
@@ -16,6 +17,7 @@ type options struct {
 	logger          *slog.Logger  // Structured logger for logging.
 	logStartup      bool          // Whether to log configuration at startup.
 	ginMode         *string       // Gin mode (e.g., release, test).
+	db              *sql.DB       // Database connection.
 }
 
 // Option defines a functional option for configuring the server.
@@ -53,4 +55,9 @@ func WithLogger(l *slog.Logger) Option {
 // WithGinMode sets the Gin mode (e.g., release, test).
 func WithGinMode(mode string) Option {
 	return func(o *options) { o.ginMode = &mode }
+}
+
+// WithDB sets the database connection for the server.
+func WithDB(db *sql.DB) Option {
+	return func(o *options) { o.db = db }
 }

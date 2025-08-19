@@ -1,14 +1,16 @@
 package server
 
 import (
-	"context"
+	"context" // context package for managing request contexts and timeouts.
+	// sql package for database interactions, specifically PostgreSQL.
 	"fmt"
-	"log/slog"
+	"log/slog" // slog package for structured logging.
 	"net/http"
 	"os"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	_ "github.com/lib/pq" // PostgreSQL driver for database interactions.
 )
 
 // Server represents the HTTP server and its configuration.
@@ -44,6 +46,10 @@ func NewServer(opts ...Option) *Server {
 	api := e.Group("/v1")
 	api.Use(AccessLogMiddleware(cfg.logger))
 	registerHealthRoutes(api)
+	if cfg.db != nil {
+		registerMenuRoutes(api, cfg.db)
+		registerOrderRoutes(api, cfg.db)
+	}
 
 	hs := &http.Server{
 		Addr:         cfg.addr,

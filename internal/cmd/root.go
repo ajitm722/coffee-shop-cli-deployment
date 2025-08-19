@@ -12,7 +12,7 @@ import (
 var rootCmd = &cobra.Command{
 	Use:   "coffee",
 	Short: "Coffee shop API (CLI-first)",
-	Long:  "Minimal hexagonal Go service. Step 1 only: boot + config.",
+	Long:  "Coffee shop API (CLI-first) is a simple HTTP API for managing coffee shop operations.",
 }
 
 // Execute runs the root command and handles errors.

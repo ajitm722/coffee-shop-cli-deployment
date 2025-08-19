@@ -3,15 +3,18 @@ package cmd
 import (
 	// Import necessary packages for server setup, configuration, and signal handling
 	"context"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
 	"coffee/internal/config"
+	"coffee/internal/db"
 	"coffee/internal/server"
 
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv" // NEW: for loading .env files
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -44,7 +47,23 @@ var serveCmd = &cobra.Command{
 	Use:   "serve",
 	Short: "Start the HTTP API server",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		// NEW: Load environment variables from .env file
+		if err := godotenv.Load(".env"); err != nil {
+			return err
+		}
+
 		cfg := config.Load()
+
+		dbURL := os.Getenv("DB_URL")
+		if dbURL == "" {
+			return fmt.Errorf("DB_URL not set in environment")
+		}
+
+		db, err := db.Connect(dbURL)
+		if err != nil {
+			return err
+		}
+		defer db.Close()
 
 		srv := server.NewServer(
 			server.WithAddr(cfg.Addr),
@@ -52,6 +71,7 @@ var serveCmd = &cobra.Command{
 			server.WithShutdownTimeout(cfg.ShutdownTimeout),
 			server.WithStartupConfigLog(),
 			server.WithGinMode(gin.ReleaseMode), // <— explicit for runtime
+			server.WithDB(db),                   // Pass the database connection
 		)
 
 		errCh := make(chan error, 1)

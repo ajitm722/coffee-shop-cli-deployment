@@ -1,25 +1,59 @@
-APP=coffee
-BIN_DIR=bin
+APP      := coffee
+BIN_DIR  := bin
+DB_URL   := $(DB_URL)
 
-.PHONY: run build test tidy
+include .env
+export
 
-# Run the application using the `go run` command.
-# This target starts the server defined in the `cmd/coffee` package.
+.PHONY: run build test tidy db-up db-down db-logs migrate-up migrate-down seed all
+
+
+## Build the Go binary
+build:
+	mkdir -p $(BIN_DIR)
+	go build -o $(BIN_DIR)/$(APP) ./cmd/coffee
+
+## Run the app directly
 run:
 	go run ./cmd/coffee serve
 
-# Build the application binary and place it in the bin directory.
-# This target compiles the Go code into an executable binary.
-build:
-	mkdir -p $(BIN_DIR) # Ensure the bin directory exists.
-	go build -o $(BIN_DIR)/$(APP) ./cmd/coffee
-
-# Run all tests with race detection enabled.
-# This target ensures the code is tested thoroughly for concurrency issues.
+## Run tests with race detection
 test:
 	go test ./... -race -count=1
 
-# Clean up unused dependencies in go.mod and go.sum.
-# This target ensures the project's dependency files are up-to-date.
+## Clean dependencies
 tidy:
 	go mod tidy
+
+## Start/stop database with Docker Compose
+db-up:
+	docker-compose up -d postgres
+
+db-down:
+	docker-compose down
+
+db-logs:
+	docker-compose logs -f postgres
+
+wait-for-db:
+	@echo "Waiting for Postgres to be ready..."
+	@until docker exec coffee_postgres pg_isready -U postgres -d coffee > /dev/null 2>&1; do \
+		echo "Postgres is unavailable - sleeping"; \
+		sleep 2; \
+	done
+	@echo "Postgres is up!"
+
+## Run database migrations
+migrate-up: wait-for-db
+
+	migrate -path db/migrations -database "$(DB_URL)" up
+
+migrate-down:
+	migrate -path db/migrations -database "$(DB_URL)" down
+
+## Seed the database (inside container)
+seed:
+	docker exec -i coffee_postgres psql -U postgres -d coffee -f /docker-entrypoint-initdb.d/seed.sql
+
+## Full workflow: start DB, migrate, seed, run app
+all: db-up migrate-up seed run
