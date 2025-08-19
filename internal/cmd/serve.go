@@ -16,6 +16,8 @@ import (
 	"github.com/spf13/viper"
 )
 
+// init initializes the serve command and binds flags to configuration values.
+// Flags allow users to override configuration values via the CLI.
 func init() {
 	// NEW: config file flag
 	serveCmd.Flags().String("config", "", "path to config file (e.g., ./config.yaml)")
@@ -36,6 +38,8 @@ func init() {
 	rootCmd.AddCommand(serveCmd)
 }
 
+// serveCmd defines the "serve" command, which starts the HTTP API server.
+// It loads configuration, initializes the server, and handles graceful shutdown.
 var serveCmd = &cobra.Command{
 	Use:   "serve",
 	Short: "Start the HTTP API server",

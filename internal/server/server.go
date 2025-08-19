@@ -11,15 +11,19 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// Server represents the HTTP server and its configuration.
+// It encapsulates the Gin engine, HTTP server, logger, and other settings.
 type Server struct {
-	http     *http.Server
-	eng      *gin.Engine
-	log      *slog.Logger
-	addr     string
-	shutdown time.Duration // NEW: store for logging
-	logStart bool          // NEW: whether to log at startup
+	http     *http.Server  // Underlying HTTP server.
+	eng      *gin.Engine   // Gin engine for routing.
+	log      *slog.Logger  // Structured logger for logging.
+	addr     string        // Address to listen on.
+	shutdown time.Duration // Timeout duration for graceful shutdown.
+	logStart bool          // Whether to log configuration at startup.
 }
 
+// NewServer initializes a new Server instance with the provided options.
+// It configures the Gin engine, HTTP server, and middleware.
 func NewServer(opts ...Option) *Server {
 	cfg := &options{
 		logger: slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{})),
@@ -59,6 +63,8 @@ func NewServer(opts ...Option) *Server {
 	}
 }
 
+// Start begins listening for incoming HTTP requests.
+// It logs the server configuration if enabled and starts the HTTP server.
 func (s *Server) Start() error {
 	// NEW: log the final, resolved config at startup
 	if s.logStart {
@@ -79,16 +85,19 @@ func (s *Server) Start() error {
 }
 
 // Engine exposes the underlying Gin engine for tests.
+// This allows test code to interact directly with the routing engine.
 func (s *Server) Engine() *gin.Engine {
 	return s.eng
 }
 
 // Logger exposes the structured logger (slog) for callers/tests.
+// This allows external code to log messages using the server's logger.
 func (s *Server) Logger() *slog.Logger {
 	return s.log
 }
 
 // Stop performs a graceful shutdown with the provided context deadline.
+// It ensures the server shuts down cleanly within the specified timeout.
 func (s *Server) Stop(ctx context.Context) error {
 	s.log.Info("stopping http server")
 	return s.http.Shutdown(ctx)

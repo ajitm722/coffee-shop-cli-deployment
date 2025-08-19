@@ -5,24 +5,28 @@ import (
 	"time"
 )
 
+// options struct holds configuration values for the server.
+// These values are set using functional options.
 type options struct {
-	addr            string
-	readTimeout     time.Duration
-	writeTimeout    time.Duration
-	idleTimeout     time.Duration
-	shutdownTimeout time.Duration
-	logger          *slog.Logger
-	logStartup      bool
-	ginMode         *string // nil => don't touch global gin mode
-
+	addr            string        // Address to listen on.
+	readTimeout     time.Duration // Timeout for reading requests.
+	writeTimeout    time.Duration // Timeout for writing responses.
+	idleTimeout     time.Duration // Timeout for idle connections.
+	shutdownTimeout time.Duration // Timeout for graceful shutdown.
+	logger          *slog.Logger  // Structured logger for logging.
+	logStartup      bool          // Whether to log configuration at startup.
+	ginMode         *string       // Gin mode (e.g., release, test).
 }
 
+// Option defines a functional option for configuring the server.
 type Option func(*options)
 
+// WithAddr sets the server's listening address.
 func WithAddr(addr string) Option {
 	return func(o *options) { o.addr = addr }
 }
 
+// WithTimeouts sets the read, write, and idle timeouts for the server.
 func WithTimeouts(read, write, idle time.Duration) Option {
 	return func(o *options) {
 		o.readTimeout = read
@@ -31,21 +35,22 @@ func WithTimeouts(read, write, idle time.Duration) Option {
 	}
 }
 
-// NEW: carry shutdown timeout into the server (for startup logging)
+// WithShutdownTimeout sets the timeout for graceful shutdown.
 func WithShutdownTimeout(d time.Duration) Option {
 	return func(o *options) { o.shutdownTimeout = d }
 }
 
-// NEW: toggle logging of config at startup
+// WithStartupConfigLog enables logging of server configuration at startup.
 func WithStartupConfigLog() Option {
 	return func(o *options) { o.logStartup = true }
 }
 
+// WithLogger sets the structured logger for the server.
 func WithLogger(l *slog.Logger) Option {
 	return func(o *options) { o.logger = l }
 }
 
-// add this function
+// WithGinMode sets the Gin mode (e.g., release, test).
 func WithGinMode(mode string) Option {
 	return func(o *options) { o.ginMode = &mode }
 }

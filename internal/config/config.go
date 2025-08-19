@@ -7,19 +7,23 @@ import (
 	"github.com/spf13/viper"
 )
 
+// Config holds the server configuration values.
+// These values are loaded from defaults, config files, environment variables, and flags.
 type Config struct {
-	Addr            string
-	ReadTimeout     time.Duration
-	WriteTimeout    time.Duration
-	IdleTimeout     time.Duration
-	ShutdownTimeout time.Duration
+	Addr            string        // Address to listen on.
+	ReadTimeout     time.Duration // Timeout for reading requests.
+	WriteTimeout    time.Duration // Timeout for writing responses.
+	IdleTimeout     time.Duration // Timeout for idle connections.
+	ShutdownTimeout time.Duration // Timeout for graceful shutdown.
 }
 
-// Load merges defaults + config file (if present) + env (COFFEE_*) + flags.
+// Load merges defaults, config file, environment variables, and flags into a Config struct.
+// It ensures the application has all necessary configuration values.
 func Load() Config {
 	v := viper.GetViper()
 
 	// ------------- Defaults -------------
+	// Set default values for the configuration.
 	v.SetDefault("addr", ":8080")
 	v.SetDefault("read_timeout", 5*time.Second)
 	v.SetDefault("write_timeout", 10*time.Second)
@@ -39,6 +43,7 @@ func Load() Config {
 		v.AddConfigPath("/etc/coffee")
 	}
 
+	// Attempt to read the configuration file.
 	if err := v.ReadInConfig(); err == nil {
 		log.Printf("loaded config file: %s", v.ConfigFileUsed())
 	} else {
@@ -46,9 +51,11 @@ func Load() Config {
 	}
 
 	// ------------- Env -------------
+	// Load environment variables with the prefix "COFFEE_".
 	v.SetEnvPrefix("coffee") // COFFEE_*
 	v.AutomaticEnv()
 
+	// Return the final configuration values.
 	return Config{
 		Addr:            v.GetString("addr"),
 		ReadTimeout:     v.GetDuration("read_timeout"),

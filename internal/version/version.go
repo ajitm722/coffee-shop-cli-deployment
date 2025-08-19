@@ -2,8 +2,12 @@ package version
 
 // Version information for the application.
 // These variables can be set during build time using ldflags.
-var (
-	Version   = "dev"     // Application version (default: dev).
-	Commit    = "none"    // Git commit hash (default: none).
-	BuildTime = "unknown" // Build timestamp (default: unknown).
-)
+
+// Version represents the application version (default: dev).
+var Version = "dev"
+
+// Commit represents the Git commit hash (default: none).
+var Commit = "none"
+
+// BuildTime represents the build timestamp (default: unknown).
+var BuildTime = "unknown"
