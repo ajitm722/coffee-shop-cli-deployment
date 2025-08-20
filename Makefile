@@ -23,6 +23,14 @@ run:
 test:
 	go test ./... -race -count=1
 
+## Run integration tests
+test-integration:
+	go test -tags=integration ./test/integration/... -count=1 -v
+
+## Run integration tests with verbose output + benchmarks
+test-integration-bench:
+	go test -tags=integration ./test/integration/... -v -bench . -benchmem -count=1
+
 ## Clean dependencies
 tidy:
 	go mod tidy
@@ -111,6 +119,7 @@ main-help:
 	@echo "  make build          Build the Go binary ($(BIN_DIR)/$(APP))"
 	@echo "  make run            Run the app directly with 'go run'"
 	@echo "  make test           Run all tests with race detection"
+	@echo "  make test-integration Run integration tests"
 	@echo "  make tidy           Clean up go.mod/go.sum"
 	@echo "  make db-up          Start PostgreSQL container"
 	@echo "  make db-down        Stop PostgreSQL container"
