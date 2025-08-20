@@ -47,8 +47,10 @@ func NewServer(opts ...Option) *Server {
 	api.Use(AccessLogMiddleware(cfg.logger))
 	registerHealthRoutes(api)
 	if cfg.db != nil {
-		registerMenuRoutes(api, cfg.db)
-		registerOrderRoutes(api, cfg.db)
+		registerMenuRoutes(api, cfg.db)       // Register menu routes if a database connection is provided.
+		registerOrderRoutes(api, cfg.db)      // Register order routes if a database connection is provided.
+		registerOrderListRoutes(api, cfg.db)  // Register order list routes if a database connection is provided.
+		registerOrderClearRoutes(api, cfg.db) // Register order clear routes if a database connection is provided.
 	}
 
 	hs := &http.Server{
