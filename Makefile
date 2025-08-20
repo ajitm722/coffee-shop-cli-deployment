@@ -1,11 +1,13 @@
 APP      := coffee
 BIN_DIR  := bin
 DB_URL   := $(DB_URL)
+API_BASE := http://localhost:9090/v1
 
 include .env
 export
 
-.PHONY: run build test tidy db-up db-down db-logs migrate-up migrate-down seed all
+.PHONY: run build test tidy db-up db-down db-logs migrate-up migrate-down seed all \
+        health menu orders-list orders-clear orders-create
 
 
 ## Build the Go binary
@@ -30,7 +32,7 @@ db-up:
 	docker-compose up -d postgres
 
 db-down:
-	docker-compose down
+	docker-compose down -v
 
 db-logs:
 	docker-compose logs -f postgres
@@ -57,3 +59,74 @@ seed:
 
 ## Full workflow: start DB, migrate, seed, run app
 all: db-up migrate-up seed run
+
+### -----------------------------
+### API TEST TARGETS
+### -----------------------------
+
+## Health check endpoints
+health:
+	curl -i $(API_BASE)/healthz
+ready:
+	curl -i $(API_BASE)/readyz
+
+## Menu endpoint
+menu:
+	curl -i $(API_BASE)/menu
+
+## List all orders
+orders-list:
+	curl -i $(API_BASE)/orders
+
+## Clear all orders
+orders-clear:
+	curl -X DELETE $(API_BASE)/orders
+
+## Create an order (interactive)
+## Create an order (interactive)
+orders-create:
+	@echo " Place a new order:"; \
+	read -p "Customer name: " customer; \
+	read -p "Items (comma separated): " items; \
+	payload=$$(printf '{"customer":"%s","items":[%s]}' "$$customer" "$$(echo $$items | sed 's/[^,][^,]*/"&"/g')"); \
+	\
+	echo ""; \
+	echo "======================================"; \
+	echo "        PRINTING ORDER DOCKET     "; \
+	echo "======================================"; \
+	echo "$$payload"; \
+	echo "======================================"; \
+	echo ""; \
+	\
+	curl -s -X POST -H "Content-Type: application/json" \
+		-d "$$payload" \
+		$(API_BASE)/orders | jq .
+
+
+
+## Show available build/dev commands
+main-help:
+	@echo ""
+	@echo "Main Build & Dev Commands:"
+	@echo "  make build          Build the Go binary ($(BIN_DIR)/$(APP))"
+	@echo "  make run            Run the app directly with 'go run'"
+	@echo "  make test           Run all tests with race detection"
+	@echo "  make tidy           Clean up go.mod/go.sum"
+	@echo "  make db-up          Start PostgreSQL container"
+	@echo "  make db-down        Stop PostgreSQL container"
+	@echo "  make migrate-up     Run database migrations"
+	@echo "  make migrate-down   Roll back the last migration"
+	@echo "  make seed           Seed the database with initial data"
+	@echo "  make all            Full workflow: db-up, migrate, seed, run"
+	@echo ""
+
+## Show available API testing commands
+api-help:
+	@echo ""
+	@echo "API Testing Commands:"
+	@echo "  make health         Check /healthz and /readyz endpoints"
+	@echo "  make menu           Get the coffee menu (/menu)"
+	@echo "  make orders-list    List all orders (/orders)"
+	@echo "  make orders-clear   Clear all orders (DELETE /orders)"
+	@echo "  make orders-create  Create a new order (interactive prompt)"
+	@echo ""
