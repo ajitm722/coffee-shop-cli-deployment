@@ -66,12 +66,13 @@ var serveCmd = &cobra.Command{
 		defer db.Close()
 
 		srv := server.NewServer(
-			server.WithAddr(cfg.Addr),
-			server.WithTimeouts(cfg.ReadTimeout, cfg.WriteTimeout, cfg.IdleTimeout),
-			server.WithShutdownTimeout(cfg.ShutdownTimeout),
-			server.WithStartupConfigLog(),
-			server.WithGinMode(gin.ReleaseMode), // <— explicit for runtime
-			server.WithDB(db),                   // Pass the database connection
+			server.WithAddr(cfg.Addr), // Set the server address from config
+			server.WithTimeouts(cfg.ReadTimeout, cfg.WriteTimeout, cfg.IdleTimeout), // Set timeouts from config
+			server.WithShutdownTimeout(cfg.ShutdownTimeout),                         // Set the shutdown timeout from config
+			server.WithStartupConfigLog(),                                           // enable logging of server config at startup
+			server.WithGinMode(gin.ReleaseMode),                                     // <— explicit for runtime
+			server.WithDB(db),                                                       // Pass the database connection
+			server.WithAccessLog(),                                                  // enable logging
 		)
 
 		errCh := make(chan error, 1)

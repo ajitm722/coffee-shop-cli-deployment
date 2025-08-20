@@ -29,7 +29,7 @@ test-integration:
 
 ## Run integration tests with verbose output + benchmarks
 test-integration-bench:
-	go test -tags=integration ./test/integration/... -v -bench . -benchmem -count=1
+	go test -tags=integration ./test/integration/... -bench . -benchmem -count=1
 
 ## Clean dependencies
 tidy:
@@ -133,7 +133,8 @@ main-help:
 api-help:
 	@echo ""
 	@echo "API Testing Commands:"
-	@echo "  make health         Check /healthz and /readyz endpoints"
+	@echo "  make health         Check /healthz endpoint"
+	@echo "  make ready          Check /readyz endpoint"
 	@echo "  make menu           Get the coffee menu (/menu)"
 	@echo "  make orders-list    List all orders (/orders)"
 	@echo "  make orders-clear   Clear all orders (DELETE /orders)"

@@ -44,7 +44,9 @@ func NewServer(opts ...Option) *Server {
 	e.Use(RequestIDMiddleware())
 
 	api := e.Group("/v1")
-	api.Use(AccessLogMiddleware(cfg.logger))
+	if cfg.accessLog {
+		api.Use(AccessLogMiddleware(cfg.logger))
+	}
 	registerHealthRoutes(api)
 	if cfg.db != nil {
 		registerMenuRoutes(api, cfg.db)       // Register menu routes if a database connection is provided.

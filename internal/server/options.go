@@ -18,6 +18,7 @@ type options struct {
 	logStartup      bool          // Whether to log configuration at startup.
 	ginMode         *string       // Gin mode (e.g., release, test).
 	db              *sql.DB       // Database connection.
+	accessLog       bool          // Whether to log access details for each request.
 }
 
 // Option defines a functional option for configuring the server.
@@ -60,4 +61,9 @@ func WithGinMode(mode string) Option {
 // WithDB sets the database connection for the server.
 func WithDB(db *sql.DB) Option {
 	return func(o *options) { o.db = db }
+}
+
+// WithAccessLog enables AccessLogMiddleware for /v1 routes.
+func WithAccessLog() Option {
+	return func(o *options) { o.accessLog = true }
 }

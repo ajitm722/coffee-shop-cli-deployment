@@ -16,6 +16,7 @@ import (
 	"coffee/internal/db"
 	"coffee/internal/server"
 
+	"github.com/gin-gonic/gin"
 	_ "github.com/lib/pq"
 	tc "github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
@@ -124,6 +125,7 @@ func TestMenuEndpoint(t *testing.T) {
 	s := server.NewServer(
 		server.WithAddr(":0"), // dynamic port not needed for httptest
 		server.WithDB(database),
+		server.WithGinMode(gin.TestMode), // Use TestMode for cleaner test output
 	)
 
 	// Serve via httptest
@@ -151,7 +153,10 @@ func BenchmarkMenuEndpoint(b *testing.B) {
 	database, _ := db.Connect(dsn)
 	defer database.Close()
 
-	s := server.NewServer(server.WithDB(database))
+	s := server.NewServer(
+		server.WithDB(database),             // Configure server with database connection
+		server.WithGinMode(gin.ReleaseMode), // To avoid debug logs in benchmarks
+	)
 	ts := httptest.NewServer(s.Engine())
 	defer ts.Close()
 
