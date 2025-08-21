@@ -15,8 +15,10 @@ WIN ?= 5m
 include .env
 export
 
-.PHONY: run build test tidy db-up db-down db-logs migrate-up migrate-down seed all \
-        health menu orders-list orders-clear orders-create
+.PHONY: run build fmt lint vet gitleaks govulncheck gosec sec-all \
+        test test-integration test-integration-bench tidy \
+        db-up db-logs migrate-up migrate-down seed complete-db-setup \
+        api-up prometheus-up all-down main-help
 
 ##Main Makefile targets for Golang Coffee App
 ## Build the Go binary
@@ -39,6 +41,28 @@ fmt:
 lint:
 	$(TOOLS_BIN)/golangci-lint run ./...
 
+## Run go vet (built-in static analysis)
+vet:
+	@echo "== go vet =="
+	go vet ./...
+
+## Scan repo for secrets (tokens, keys, passwords)
+gitleaks:
+	@command -v gitleaks >/dev/null 2>&1 || go install github.com/zricethezav/gitleaks/v8@latest
+	gitleaks detect --redact
+
+## Check Go dependencies against vuln DB
+govulncheck:
+	@echo "== govulncheck (Go vuln DB) =="
+	$(TOOLS_BIN)/govulncheck ./...
+
+## Security static analysis (SQLi, weak crypto, etc.)
+gosec:
+	@echo "== gosec (SAST) =="
+	$(TOOLS_BIN)/gosec ./...
+
+## Run all security checks in one go
+sec-all: gitleaks govulncheck gosec
 
 ## Run tests with race detection
 test:
@@ -231,6 +255,11 @@ main-help:
 	@echo "  make run                      Run the app locally (uses .env DB_URL)"
 	@echo "  make fmt                      Format code (in-place with gofmt + goimports)"
 	@echo "  make lint                     Run golangci-lint with repo config (.golangci.yml)"
+	@echo "  make vet                      Run go vet (static analysis)"
+	@echo "  make gitleaks                 Scan repo for secrets (tokens, keys, passwords)"
+	@echo "  make govulncheck              Check Go dependencies against vuln DB"
+	@echo "  make gosec                    Run security static analysis (SQLi, weak crypto, etc.)"
+	@echo "  make sec-all                  Run all security checks (gitleaks, govulncheck, gosec)"
 	@echo "  make test                     Run all tests with race detection"
 	@echo "  make test-integration         Run integration tests (uses testcontainers)"
 	@echo "  make test-integration-bench   Run integration benchmarks"

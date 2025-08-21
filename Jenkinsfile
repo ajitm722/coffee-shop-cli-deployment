@@ -94,33 +94,53 @@ pipeline {
               echo "== golangci-lint =="
               go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
               $GOPATH/bin/golangci-lint run ./...
+
+
+              echo "== go vet (static checks) =="
+              # Static analysis for suspicious constructs (misused printf, unreachable code, etc).
+              # Non-zero exit on issues -> fails the build.
+              go vet ./...
+
             '''
           }
         }
       }
     }
-    stage('Security – Vulns & Secrets') {
+    stage('Security – Vulns, Secrets & Code Scans') {
       steps {
         script {
+          // Reuse Go build caches for speed
           def runArgs = '-e HOME=/var/jenkins_home ' +
                         '-e GOCACHE=/var/jenkins_home/.cache/go-build ' +
                         '-e GOMODCACHE=/var/jenkins_home/go/pkg/mod'
 
           docker.image('golang:1.23').inside(runArgs) {
             sh '''
-              echo "== gitleaks (secrets) =="
-              go install github.com/gitleaks/gitleaks/v8@latest
-              # If your Jenkins checkout isn’t a full git clone (it is), --no-git would work too
+              set -e
+
+              echo "== gitleaks (secret scanning) =="
+              # Scans the repository for hard-coded secrets (tokens, keys, passwords).
+              # Fails the build if a secret is found.
+              go install github.com/zricethezav/gitleaks/v8@latest
               $GOPATH/bin/gitleaks detect --redact
 
               echo "== govulncheck (Go module advisories) =="
+              # Analyzes your code + dependency graph for known vulnerabilities (Go vuln DB).
+              # Fails the build if a reachable vulnerability is detected.
               go install golang.org/x/vuln/cmd/govulncheck@latest
               $GOPATH/bin/govulncheck ./...
+
+              echo "== gosec (SAST) =="
+              # Security-focused static analysis: looks for risky patterns (SQLi, weak crypto, path traversal).
+              # Non-zero exit on findings -> fails the build by default.
+              go install github.com/securego/gosec/v2/cmd/gosec@latest
+              $GOPATH/bin/gosec ./...
             '''
           }
         }
       }
     }
+
   }
 }
 
