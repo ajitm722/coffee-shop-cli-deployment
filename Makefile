@@ -26,6 +26,12 @@ build:
 run:
 	go run ./cmd/coffee serve
 
+## Format the code and tidy dependencies
+fmt:
+	gofmt -s -w .
+	go mod tidy
+	goimports -w .
+
 ## Run tests with race detection
 test:
 	go test ./... -race -count=1 -v
@@ -215,6 +221,7 @@ main-help:
 	@echo "Main Build & Dev Commands:"
 	@echo "  make build                    Build the Go binary ($(BIN_DIR)/$(APP))"
 	@echo "  make run                      Run the app locally (uses .env DB_URL)"
+	@echo "  make fmt                      Format code and tidy dependencies"
 	@echo "  make test                     Run all tests with race detection"
 	@echo "  make test-integration         Run integration tests (uses testcontainers)"
 	@echo "  make test-integration-bench   Run integration benchmarks"
