@@ -114,7 +114,7 @@ pipeline {
                         '-e GOCACHE=/var/jenkins_home/.cache/go-build ' +
                         '-e GOMODCACHE=/var/jenkins_home/go/pkg/mod'
 
-          docker.image('golang:1.23').inside(runArgs) {
+          docker.image('golang:1.24').inside(runArgs) {
             sh '''
               set -e
 
@@ -133,7 +133,7 @@ pipeline {
               echo "== gosec (SAST) =="
               # Security-focused static analysis: looks for risky patterns (SQLi, weak crypto, path traversal).
               # Non-zero exit on findings -> fails the build by default.
-              go install github.com/securego/gosec/v2/cmd/gosec@v2.20.1
+              go install github.com/securego/gosec/v2/cmd/gosec@latest
               $GOPATH/bin/gosec ./...
             '''
           }
