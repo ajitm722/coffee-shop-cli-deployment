@@ -99,6 +99,28 @@ pipeline {
         }
       }
     }
+    stage('Security – Vulns & Secrets') {
+      steps {
+        script {
+          def runArgs = '-e HOME=/var/jenkins_home ' +
+                        '-e GOCACHE=/var/jenkins_home/.cache/go-build ' +
+                        '-e GOMODCACHE=/var/jenkins_home/go/pkg/mod'
+
+          docker.image('golang:1.23').inside(runArgs) {
+            sh '''
+              echo "== gitleaks (secrets) =="
+              go install github.com/gitleaks/gitleaks/v8@latest
+              # If your Jenkins checkout isn’t a full git clone (it is), --no-git would work too
+              $GOPATH/bin/gitleaks detect --redact
+
+              echo "== govulncheck (Go module advisories) =="
+              go install golang.org/x/vuln/cmd/govulncheck@latest
+              $GOPATH/bin/govulncheck ./...
+            '''
+          }
+        }
+      }
+    }
   }
 }
 
