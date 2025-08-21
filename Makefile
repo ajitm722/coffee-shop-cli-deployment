@@ -2,6 +2,8 @@ APP      := coffee
 BIN_DIR  := bin
 DB_URL   := $(DB_URL)
 API_BASE := http://localhost:9090/v1
+# Resolve tool bin path portably
+TOOLS_BIN := $(shell go env GOPATH)/bin
 
 # ---- Prometheus quick helpers ----
 ## Prometheus URL (default to local dev instance)
@@ -26,11 +28,17 @@ build:
 run:
 	go run ./cmd/coffee serve
 
-## Format the code and tidy dependencies
+## Format code in-place (gofmt + goimports) 
 fmt:
+	@echo "== gofmt -s -w . =="
 	gofmt -s -w .
-	go mod tidy
-	goimports -w .
+	@echo "== goimports -w . =="
+	$(TOOLS_BIN)/goimports -w .
+
+## Run golangci-lint with repo config (.golangci.yml)
+lint:
+	$(TOOLS_BIN)/golangci-lint run ./...
+
 
 ## Run tests with race detection
 test:
@@ -221,7 +229,8 @@ main-help:
 	@echo "Main Build & Dev Commands:"
 	@echo "  make build                    Build the Go binary ($(BIN_DIR)/$(APP))"
 	@echo "  make run                      Run the app locally (uses .env DB_URL)"
-	@echo "  make fmt                      Format code and tidy dependencies"
+	@echo "  make fmt                      Format code (in-place with gofmt + goimports)"
+	@echo "  make lint                     Run golangci-lint with repo config (.golangci.yml)"
 	@echo "  make test                     Run all tests with race detection"
 	@echo "  make test-integration         Run integration tests (uses testcontainers)"
 	@echo "  make test-integration-bench   Run integration benchmarks"
