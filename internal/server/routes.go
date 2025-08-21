@@ -6,6 +6,8 @@ import (
 	"net/http" // Provides HTTP status codes and related utilities.
 	"time"
 
+	"coffee/internal/metrics" // metrics package for Prometheus metrics.
+
 	"github.com/gin-gonic/gin" // Gin is a web framework for building HTTP APIs.
 	"github.com/lib/pq"        // pq is a PostgreSQL driver for Go, used for database interactions.
 )
@@ -29,6 +31,11 @@ func registerHealthRoutes(rg *gin.RouterGroup) {
 // Register menu routes
 func registerMenuRoutes(rg *gin.RouterGroup, db *sql.DB) {
 	rg.GET("/menu", func(c *gin.Context) {
+		start := time.Now()
+		defer func() {
+			metrics.ObserveMenu(c.Writer.Status(), time.Since(start))
+		}()
+
 		rows, err := db.Query("SELECT id, name, price_cents FROM menu")
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

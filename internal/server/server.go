@@ -11,6 +11,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	_ "github.com/lib/pq" // PostgreSQL driver for database interactions.
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 // Server represents the HTTP server and its configuration.
@@ -42,6 +43,9 @@ func NewServer(opts ...Option) *Server {
 	e := gin.New()
 	e.Use(gin.Recovery())
 	e.Use(RequestIDMiddleware())
+
+	// Expose Prometheus metrics at /metrics (root, not versioned)
+	e.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
 	api := e.Group("/v1")
 	if cfg.accessLog {

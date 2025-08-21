@@ -47,10 +47,8 @@ var serveCmd = &cobra.Command{
 	Use:   "serve",
 	Short: "Start the HTTP API server",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// NEW: Load environment variables from .env file
-		if err := godotenv.Load(".env"); err != nil {
-			return err
-		}
+		// Load .env if present; ignore if missing (pass via Docker)
+		_ = godotenv.Load()
 
 		cfg := config.Load()
 

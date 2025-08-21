@@ -1,0 +1,6 @@
+.git
+bin
+docs
+.vscode
+coverage.out
+
