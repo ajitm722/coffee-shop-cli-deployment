@@ -133,7 +133,7 @@ pipeline {
               echo "== gosec (SAST) =="
               # Security-focused static analysis: looks for risky patterns (SQLi, weak crypto, path traversal).
               # Non-zero exit on findings -> fails the build by default.
-              go install github.com/securego/gosec/v2/cmd/gosec@latest
+              go install github.com/securego/gosec/v2/cmd/gosec@v2.20.1
               $GOPATH/bin/gosec ./...
             '''
           }
