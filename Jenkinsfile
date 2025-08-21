@@ -56,11 +56,10 @@ pipeline {
                         // talk to the host Docker
                         "-e DOCKER_HOST=unix:///var/run/docker.sock " +
                         "-v /var/run/docker.sock:/var/run/docker.sock " +
-                        "--group-add ${dockerGid} " +
+                        "-u 0:0 " + // run as root to avoid permission issues with the socket
                         // make the host resolvable/reachable for Ryuk healthcheck
                         "--add-host=host.docker.internal:host-gateway " +
-                        "-e TESTCONTAINERS_HOST_OVERRIDE=host.docker.internal" +
-                        "-e TESTCONTAINERS_RYUK_DISABLED=true " //Trying to disable ryuk to make it work
+                        "-e TESTCONTAINERS_HOST_OVERRIDE=host.docker.internal"
 
           docker.image('golang:1.23').inside(runArgs) {
             sh '''
