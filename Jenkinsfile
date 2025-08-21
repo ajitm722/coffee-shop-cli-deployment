@@ -44,6 +44,33 @@ pipeline {
         archiveArtifacts artifacts: 'coverage.out', allowEmptyArchive: true
       }
     }
+    stage('Test - Integration') {
+      steps {
+        script {
+          // same caches + also mount the Docker socket for testcontainers
+          def runArgs = '-e HOME=/var/jenkins_home ' +
+                        '-e GOCACHE=/var/jenkins_home/.cache/go-build ' +
+                        '-e GOMODCACHE=/var/jenkins_home/go/pkg/mod ' +
+                        '-v /var/run/docker.sock:/var/run/docker.sock'
+
+          docker.image('golang:1.23').inside(runArgs) {
+            sh '''
+              # 1) Functional integration tests (verbose, single run)
+              go test -tags=integration ./test/integration/... -count=1 -v
+
+              # 2) Benchmarks (skip normal tests with -run '^$'; include benchmem)
+              go test -tags=integration ./test/integration/... -bench . -benchmem -run '^$' -count=1 | tee bench.txt
+            '''
+          }
+        }
+      }
+      post {
+        always {
+          archiveArtifacts artifacts: 'bench.txt', allowEmptyArchive: true
+        }
+      }
+    }
+
   }
 }
 
