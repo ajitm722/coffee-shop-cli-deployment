@@ -47,18 +47,22 @@ pipeline {
     stage('Test - Integration') {
       steps {
         script {
-          // same caches + also mount the Docker socket for testcontainers
-          def runArgs = '-e HOME=/var/jenkins_home ' +
-                        '-e GOCACHE=/var/jenkins_home/.cache/go-build ' +
-                        '-e GOMODCACHE=/var/jenkins_home/go/pkg/mod ' +
-                        '-v /var/run/docker.sock:/var/run/docker.sock'
+          // discover host docker.sock GID
+          def dockerGid = sh(returnStdout: true, script: "stat -c %g /var/run/docker.sock").trim()
+
+          def runArgs = "-e HOME=/var/jenkins_home " +
+                        "-e GOCACHE=/var/jenkins_home/.cache/go-build " +
+                        "-e GOMODCACHE=/var/jenkins_home/go/pkg/mod " +
+                        "-e DOCKER_HOST=unix:///var/run/docker.sock " +
+                        "-v /var/run/docker.sock:/var/run/docker.sock " +
+                        "--group-add ${dockerGid}"
 
           docker.image('golang:1.23').inside(runArgs) {
             sh '''
-              # 1) Functional integration tests (verbose, single run)
+              # 1) Functional integration tests
               go test -tags=integration ./test/integration/... -count=1 -v
 
-              # 2) Benchmarks (skip normal tests with -run '^$'; include benchmem)
+              # 2) Benchmarks (skip normal tests, include benchmem)
               go test -tags=integration ./test/integration/... -bench . -benchmem -run '^$' -count=1 | tee bench.txt
             '''
           }
@@ -70,7 +74,6 @@ pipeline {
         }
       }
     }
-
   }
 }
 
