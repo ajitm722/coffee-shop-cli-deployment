@@ -75,7 +75,30 @@ pipeline {
         }
       }
     }
+    stage('Code Quality') {
+      steps {
+        script {
+          def runArgs = '-e HOME=/var/jenkins_home ' +
+                        '-e GOCACHE=/var/jenkins_home/.cache/go-build ' +
+                        '-e GOMODCACHE=/var/jenkins_home/go/pkg/mod'
 
+          docker.image('golang:1.23').inside(runArgs) {
+            sh '''
+              echo "== gofmt check =="
+              CHANGED=$(gofmt -s -l .)
+              if [ -n "$CHANGED" ]; then
+                echo "Files need gofmt:"; echo "$CHANGED"
+                exit 1
+              fi
+
+              echo "== golangci-lint =="
+              go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+              $GOPATH/bin/golangci-lint run ./...
+            '''
+          }
+        }
+      }
+    }
   }
 }
 
