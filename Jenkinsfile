@@ -59,7 +59,8 @@ pipeline {
                         "--group-add ${dockerGid} " +
                         // make the host resolvable/reachable for Ryuk healthcheck
                         "--add-host=host.docker.internal:host-gateway " +
-                        "-e TESTCONTAINERS_HOST_OVERRIDE=host.docker.internal"
+                        "-e TESTCONTAINERS_HOST_OVERRIDE=host.docker.internal" +
+                        "-e TESTCONTAINERS_RYUK_DISABLED=true " //Trying to disable ryuk to make it work
 
           docker.image('golang:1.23').inside(runArgs) {
             sh '''
