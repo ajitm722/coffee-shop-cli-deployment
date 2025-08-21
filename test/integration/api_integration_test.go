@@ -44,11 +44,11 @@ func startPostgres(t *testing.T) (tc.Container, string) {
 	if err != nil {
 		t.Fatalf("failed to start postgres: %v", err)
 	}
-
-	host, _ := pg.Host(ctx)
-	port, _ := pg.MappedPort(ctx, "5432/tcp")
-
-	dsn := fmt.Sprintf("postgres://postgres:password@%s:%s/coffee?sslmode=disable", host, port.Port())
+	ip, err := pg.ContainerIP(ctx)
+	if err != nil {
+		t.Fatalf("get container IP: %v", err)
+	}
+	dsn := fmt.Sprintf("postgres://postgres:password@%s:%d/coffee?sslmode=disable", ip, 5432)
 	return pg, dsn
 }
 
