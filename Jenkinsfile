@@ -47,26 +47,21 @@ pipeline {
     stage('Test - Integration') {
       steps {
         script {
-          // discover host docker.sock GID so the test container can use the socket
-          def dockerGid = sh(returnStdout: true, script: "stat -c %g /var/run/docker.sock").trim()
-
-          def runArgs = "-e HOME=/var/jenkins_home " +
-                        "-e GOCACHE=/var/jenkins_home/.cache/go-build " +
-                        "-e GOMODCACHE=/var/jenkins_home/go/pkg/mod " +
-                        // talk to the host Docker
-                        "-e DOCKER_HOST=unix:///var/run/docker.sock " +
-                        "-v /var/run/docker.sock:/var/run/docker.sock " +
-                        "-u 0:0 " + // run as root to avoid permission issues with the socket
-                        // make the host resolvable/reachable for Ryuk healthcheck
-                        "--add-host=host.docker.internal:host-gateway " +
-                        "-e TESTCONTAINERS_HOST_OVERRIDE=host.docker.internal"
+          def runArgs =
+            "-e HOME=/var/jenkins_home " +
+            "-e GOCACHE=/var/jenkins_home/.cache/go-build " +
+            "-e GOMODCACHE=/var/jenkins_home/go/pkg/mod " +
+            "-e DOCKER_HOST=unix:///var/run/docker.sock " +
+            "-v /var/run/docker.sock:/var/run/docker.sock " +
+            "--add-host=host.docker.internal:host-gateway " +
+            "-e TESTCONTAINERS_HOST_OVERRIDE=host.docker.internal " +
+            "-e TESTCONTAINERS_RYUK_DISABLED=true " +           // ← disable Ryuk
+            "-e TESTCONTAINERS_CHECKS_DISABLE=true " +          // ← skip external reachability check
+            "-u 0:0"                                            // already using root here; OK
 
           docker.image('golang:1.23').inside(runArgs) {
             sh '''
-              # 1) Functional integration tests
               go test -tags=integration ./test/integration/... -count=1 -v
-
-              # 2) Benchmarks
               go test -tags=integration ./test/integration/... -bench . -benchmem -run '^$' -count=1 | tee bench.txt
             '''
           }
@@ -75,6 +70,8 @@ pipeline {
       post {
         always {
           archiveArtifacts artifacts: 'bench.txt', allowEmptyArchive: true
+          // Optional safety cleanup if a job is hard-killed:
+          // sh 'docker ps -aq -f label=org.testcontainers.sessionId | xargs -r docker rm -f -v || true'
         }
       }
     }
