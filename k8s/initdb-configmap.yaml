@@ -1,0 +1,41 @@
+apiVersion: v1
+data:
+  0001_init.up.sql: |
+    -- db/migrations/0001_init.up.sql
+
+    -- Always drop existing tables so we start fresh
+    DROP TABLE IF EXISTS orders;
+    DROP TABLE IF EXISTS menu;
+
+    -- Recreate menu table
+    CREATE TABLE menu (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL UNIQUE,
+        price_cents INT NOT NULL
+    );
+
+    -- Recreate orders table
+    CREATE TABLE orders (
+        id SERIAL PRIMARY KEY,
+        customer_name TEXT NOT NULL,
+        items TEXT[] NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+  seed.sql: |
+    -- db/seed.sql
+    -- Ensure menu items are only inserted once.
+
+    INSERT INTO menu (name, price_cents) VALUES
+        ('Espresso', 250),
+        ('Double Espresso', 350),
+        ('Latte', 350),
+        ('Cappuccino', 300),
+        ('Mocha', 400),
+        ('Hot Chocolate', 400),
+        ('White Chocolate', 450),
+        ('Matcha', 450),
+        ('Chai Latte', 400)
+kind: ConfigMap
+metadata:
+  creationTimestamp: null
+  name: coffee-initdb

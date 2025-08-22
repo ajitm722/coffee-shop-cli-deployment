@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: coffee-api
+  labels:
+    app: coffee
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate           # optional: simpler rollouts while iterating locally
+  selector:
+    matchLabels:
+      app: coffee
+  template:
+    metadata:
+      labels:
+        app: coffee
+    spec:
+      imagePullSecrets:
+        - name: acr-cred
+      containers:
+      - name: coffee
+        image: acrcoffeedev.azurecr.io/coffee:latest
+        imagePullPolicy: Always       # pull fresh when using :latest
+        ports:
+        - containerPort: 9090
+        env:
+        - name: DB_URL
+          value: postgres://postgres:password@coffee-postgres:5432/coffee?sslmode=disable
+        - name: COFFEE_ADDR
+          value: ":9090"
+        readinessProbe:
+          httpGet:
+            path: /v1/readyz
+            port: 9090
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /v1/healthz
+            port: 9090
+          initialDelaySeconds: 10
+          periodSeconds: 10
