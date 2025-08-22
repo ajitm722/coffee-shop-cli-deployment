@@ -149,6 +149,7 @@ pipeline {
       steps {
         withCredentials([string(credentialsId: 'az-sp-json', variable: 'AZ_SP_JSON')]) {
           sh '''
+            #!/usr/bin/env bash
             set -euo pipefail
 
             # Extract values directly from JSON with jq
