@@ -143,41 +143,41 @@ pipeline {
     stage('Deploy Stage - Package & Push (ACR)') {
       environment {
         APP      = 'coffee'
-        ACR_NAME = 'acrcoffeedev'                    // My ACR
-        REGISTRY = "acrcoffeedev.azurecr.io"         // derived from ACR_NAME
+        ACR_NAME = 'acrcoffeedev'
+        REGISTRY = "acrcoffeedev.azurecr.io"
       }
       steps {
         withCredentials([string(credentialsId: 'az-sp-json', variable: 'AZ_SP_JSON')]) {
-          sh '''
-            #!/usr/bin/env bash
-            set -euo pipefail
+          sh(
+            shell: '/bin/bash',
+            script: '''
+              set -euo pipefail
 
-            # Extract values directly from JSON with jq
-            CLIENT_ID=$(echo "$AZ_SP_JSON" | jq -r .appId)
-            CLIENT_SECRET=$(echo "$AZ_SP_JSON" | jq -r .password)
-            TENANT_ID=$(echo "$AZ_SP_JSON" | jq -r .tenant)
-            SUB_ID=$(echo "$AZ_SP_JSON" | jq -r .subscription)
+              CLIENT_ID=$(echo "$AZ_SP_JSON" | jq -r .appId)
+              CLIENT_SECRET=$(echo "$AZ_SP_JSON" | jq -r .password)
+              TENANT_ID=$(echo "$AZ_SP_JSON" | jq -r .tenant)
+              SUB_ID=$(echo "$AZ_SP_JSON" | jq -r .subscription)
 
-            echo "Logging in to Azure subscription: $SUB_ID"
-            az login --service-principal -u "$CLIENT_ID" -p "$CLIENT_SECRET" --tenant "$TENANT_ID" >/dev/null
-            az account set --subscription "$SUB_ID"
+              echo "Logging in to Azure subscription: $SUB_ID"
+              az login --service-principal -u "$CLIENT_ID" -p "$CLIENT_SECRET" --tenant "$TENANT_ID" >/dev/null
+              az account set --subscription "$SUB_ID"
 
-            # Version string like 2025.08.22.123-shaabcdef0
-            VERSION="$(date +%Y.%m.%d).${BUILD_NUMBER}-sha${GIT_COMMIT:0:7}"
-            echo "$VERSION" > .version
-            echo "Version: $VERSION"
+              VERSION="$(date +%Y.%m.%d).${BUILD_NUMBER}-sha${GIT_COMMIT:0:7}"
+              echo "$VERSION" > .version
+              echo "Version: $VERSION"
 
-            # Build and push to ACR
-            az acr login -n ${ACR_NAME}
-            docker build -t ${REGISTRY}/${APP}:$VERSION .
-            docker tag ${REGISTRY}/${APP}:$VERSION ${REGISTRY}/${APP}:latest
-            docker push ${REGISTRY}/${APP}:$VERSION
-            docker push ${REGISTRY}/${APP}:latest
+              az acr login -n "${ACR_NAME}"
 
-            echo "Pushed:"
-            echo "  ${REGISTRY}/${APP}:$VERSION"
-            echo "  ${REGISTRY}/${APP}:latest"
-          '''
+              docker build -t "${REGISTRY}/${APP}:${VERSION}" .
+              docker tag   "${REGISTRY}/${APP}:${VERSION}" "${REGISTRY}/${APP}:latest"
+              docker push  "${REGISTRY}/${APP}:${VERSION}"
+              docker push  "${REGISTRY}/${APP}:latest"
+
+              echo "Pushed:"
+              echo "  ${REGISTRY}/${APP}:${VERSION}"
+              echo "  ${REGISTRY}/${APP}:latest"
+            '''
+          )
         }
       }
       post {
@@ -186,6 +186,7 @@ pipeline {
         }
       }
     }
+
   }
 }
 
