@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: coffee-prometheus
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: coffee-prometheus
+  template:
+    metadata:
+      labels:
+        app: coffee-prometheus
+    spec:
+      containers:
+      - name: prometheus
+        image: prom/prometheus:latest
+        args:
+          - --config.file=/etc/prometheus/prometheus.yml
+          - --storage.tsdb.path=/prometheus
+          - --storage.tsdb.retention.time=7d
+        ports:
+        - containerPort: 9090
+        volumeMounts:
+        - name: config
+          mountPath: /etc/prometheus
+        - name: data
+          mountPath: /prometheus
+      volumes:
+      - name: config
+        configMap:
+          name: coffee-prometheus-config
+          items:
+          - key: prometheus.yml
+            path: prometheus.yml
+      - name: data
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: coffee-prometheus
+spec:
+  selector:
+    app: coffee-prometheus
+  type: NodePort           # stays up continuously; also reachable from host
+  ports:
+  - name: http
+    port: 9090
+    targetPort: 9090
+    nodePort: 30091
+
