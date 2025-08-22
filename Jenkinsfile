@@ -187,6 +187,85 @@ pipeline {
         }
       }
     }
+    stage('Release to Minikube') {
+      environment {
+        APP        = 'coffee'
+        REGISTRY   = 'acrcoffeedev.azurecr.io'
+        KUBECONFIG = '/var/jenkins_home/.kube/config'
+      }
+      steps {
+        withCredentials([string(credentialsId: 'az-sp-json', variable: 'AZ_SP_JSON')]) {
+          writeFile file: 'release-minikube.sh', text: '''
+            #!/usr/bin/env bash
+            set -euo pipefail
+
+            export KUBECONFIG="/var/jenkins_home/.kube/config"
+
+            # Ensure kubeconfig paths point inside Jenkins home (idempotent)
+            sed -i 's|/home/[^/]*/.minikube|/var/jenkins_home/.minikube|g' "$KUBECONFIG" || true
+
+            # Use minikube context
+            kubectl config use-context minikube
+
+            # Pull ACR creds from injected JSON
+            CLIENT_ID=$(echo "$AZ_SP_JSON" | jq -r .appId)
+            CLIENT_SECRET=$(echo "$AZ_SP_JSON" | jq -r .password)
+
+            # Ensure / refresh imagePull secret (idempotent)
+            kubectl create secret docker-registry acr-cred \
+              --docker-server="${REGISTRY}" \
+              --docker-username="${CLIENT_ID}" \
+              --docker-password="${CLIENT_SECRET}" \
+              --docker-email=none@example.com \
+              --dry-run=client -o yaml | kubectl apply -f -
+
+            # Apply baseline manifests from repo (idempotent)
+            kubectl apply -f k8s/initdb-configmap.yaml
+            kubectl apply -f k8s/postgres.yaml
+            kubectl apply -f k8s/service.yaml
+            kubectl apply -f k8s/deployment.yaml
+
+            # Make sure the Deployment references the pull secret (safe to repeat)
+            kubectl patch deployment/coffee-api --type=merge -p '{
+              "spec": { "template": { "spec": { "imagePullSecrets": [ { "name": "acr-cred" } ] } } }
+            }' || true
+
+            # Read the image tag produced in the ACR stage
+            VERSION="$(cat .version)"
+            echo "Releasing ${REGISTRY}/${APP}:${VERSION}"
+
+            # Update image and roll out
+            kubectl set image deployment/coffee-api coffee="${REGISTRY}/${APP}:${VERSION}"
+            kubectl rollout status deployment/coffee-postgres --timeout=120s || true
+            kubectl rollout status deployment/coffee-api --timeout=180s
+
+            # In-cluster smoke test (health + ready + menu)
+            kubectl run curl --rm -i --restart=Never --image=curlimages/curl -- \
+              sh -lc "set -e; \
+                curl -sf http://coffee-api:9090/v1/healthz >/dev/null && \
+                curl -sf http://coffee-api:9090/v1/readyz  >/dev/null && \
+                curl -sf http://coffee-api:9090/v1/menu    >/dev/null"
+
+            echo "Release to Minikube complete."
+            '''
+            sh 'chmod +x ./release-minikube.sh && bash ./release-minikube.sh'
+        }
+      }
+      post {
+        failure {
+          sh '''
+            export KUBECONFIG="/var/jenkins_home/.kube/config"
+            echo "==== Debug dump ===="
+            kubectl get deploy,svc,pods -o wide
+            echo "---- describe deploy ----"
+            kubectl describe deploy/coffee-api || true
+            echo "---- recent logs ----"
+            kubectl logs deploy/coffee-api --tail=200 || true
+          '''
+        }
+      }
+    }
+
 
   }
 }
