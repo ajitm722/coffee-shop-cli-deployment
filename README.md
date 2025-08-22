@@ -1,6 +1,6 @@
 # Coffee Shop API
 
-A minimal, production‑ready HTTP API for a coffee shop domain, written in Go with Gin, PostgreSQL, and Prometheus metrics. The repo supports **clean local development** (via `make` and Docker Compose) and **repeatable CI/CD** (via Jenkins), plus a simple Minikube deployment.
+A minimal, production‑ready HTTP API for a coffee shop domain, written in Go with Gin, PostgreSQL, and Prometheus metrics. The repo supports **clean local development** (via `make` and Docker Compose) and **repeatable CI/CD** (via Jenkins), plus Minikube deployment.
 
 ---
 
@@ -25,6 +25,10 @@ A minimal, production‑ready HTTP API for a coffee shop domain, written in Go w
 ### Prometheus Monitoring in Production and Local
 
 ![Prometheus Monitoring](assets/prometheus_monitoring_in_local_and_production.png)
+
+### Jenkins Pipeline Overview
+
+![Jenkins Pipeline](assets/jenkins_pipeline_overview.png)
 
 ---
 
