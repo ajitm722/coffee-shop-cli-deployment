@@ -266,116 +266,120 @@ pipeline {
       }
     }
     stage('Monitoring & Alerting (Prometheus)') {
-  environment {
-    KUBECONFIG = '/var/jenkins_home/.kube/config'
-    COUNT      = '30'      // menu hits to generate
-    WIN        = '5m'      // Prometheus query window
-    RECIPIENT  = 'ajitmudgerikar4@gmail.com'
-  }
-  steps {
-    writeFile file: 'monitor-prom-nodeport.sh', text: '''
-      #!/usr/bin/env bash
-      set -euo pipefail
-      export KUBECONFIG="${KUBECONFIG}"
+      environment {
+        KUBECONFIG = '/var/jenkins_home/.kube/config'
+        COUNT      = '30'      // menu hits to generate
+        WIN        = '5m'      // Prometheus query window
+        RECIPIENT  = 'ajitmudgerikar4@gmail.com'
+      }
+      steps {
+        writeFile file: 'monitor-prom-nodeport.sh', text: '''
+          #!/usr/bin/env bash
+          set -euo pipefail
+          export KUBECONFIG="${KUBECONFIG}"
 
-      echo "== Applying Prometheus manifests =="
-      kubectl apply -f k8s/prometheus-configmap.yaml
-      kubectl apply -f k8s/prometheus.yaml
+          echo "== Applying Prometheus manifests =="
+          kubectl apply -f k8s/prometheus-configmap.yaml
+          kubectl apply -f k8s/prometheus.yaml
 
-      echo "== Waiting for Prometheus rollout =="
-      kubectl rollout status deploy/coffee-prometheus --timeout=180s
+          echo "== Waiting for Prometheus rollout =="
+          kubectl rollout status deploy/coffee-prometheus --timeout=180s
 
-      # Resolve Minikube IP using kubectl (no minikube CLI needed)
-      MINIKUBE_IP=$(kubectl get node -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}')
+          # Resolve Minikube IP using kubectl (no minikube CLI needed)
+          MINIKUBE_IP=$(kubectl get node -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}')
 
-      # NodePorts from your Service manifests
-      API_BASE="http://${MINIKUBE_IP}:30090/v1"
-      PROM_URL="http://${MINIKUBE_IP}:30091"
+          # NodePorts from your Service manifests
+          API_BASE="http://${MINIKUBE_IP}:30090/v1"
+          PROM_URL="http://${MINIKUBE_IP}:30091"
 
-      echo "== Config =="
-      echo "MINIKUBE_IP = ${MINIKUBE_IP}"
-      echo "API_BASE    = ${API_BASE}"
-      echo "PROM_URL    = ${PROM_URL}"
-      echo "WIN         = ${WIN}"
-      echo "COUNT       = ${COUNT}"
+          echo "== Config =="
+          echo "MINIKUBE_IP = ${MINIKUBE_IP}"
+          echo "API_BASE    = ${API_BASE}"
+          echo "PROM_URL    = ${PROM_URL}"
+          echo "WIN         = ${WIN}"
+          echo "COUNT       = ${COUNT}"
 
-      # Sanity: Prometheus reachable
-      curl -fsS "${PROM_URL}/-/healthy" >/dev/null || { echo "ERROR: Prometheus not reachable at ${PROM_URL}"; exit 1; }
+          # Sanity: Prometheus reachable
+          curl -fsS "${PROM_URL}/-/healthy" >/dev/null || { echo "ERROR: Prometheus not reachable at ${PROM_URL}"; exit 1; }
 
-      # Generate traffic to /v1/menu via NodePort
-      echo "Hitting ${API_BASE}/menu ${COUNT} times..."
-      for i in $(seq 1 "${COUNT}"); do curl -s "${API_BASE}/menu" >/dev/null; done
-      echo "Traffic done."
-      sleep 8   # allow scrape
+          # Generate traffic to /v1/menu via NodePort
+          echo "Hitting ${API_BASE}/menu ${COUNT} times..."
+          for i in $(seq 1 "${COUNT}"); do curl -s "${API_BASE}/menu" >/dev/null; done
+          echo "Traffic done."
+          sleep 8   # allow scrape
 
-      # --- PromQL (matches your Makefile) ---
-      REQ=$(curl -fsSG "${PROM_URL}/api/v1/query" \
-        --data-urlencode "query=sum(increase(coffee_menu_requests_total[${WIN}]))" \
-        | jq -r 'if (.data.result|length)>0 then .data.result[0].value[1] else "0" end')
+          # --- PromQL (matches your Makefile) ---
+          REQ=$(curl -fsSG "${PROM_URL}/api/v1/query" \
+            --data-urlencode "query=sum(increase(coffee_menu_requests_total[${WIN}]))" \
+            | jq -r 'if (.data.result|length)>0 then .data.result[0].value[1] else "0" end')
 
-      RPS=$(curl -fsSG "${PROM_URL}/api/v1/query" \
-        --data-urlencode "query=sum(rate(coffee_menu_requests_total[${WIN}]))" \
-        | jq -r 'if (.data.result|length)>0 then .data.result[0].value[1] else "0" end')
+          RPS=$(curl -fsSG "${PROM_URL}/api/v1/query" \
+            --data-urlencode "query=sum(rate(coffee_menu_requests_total[${WIN}]))" \
+            | jq -r 'if (.data.result|length)>0 then .data.result[0].value[1] else "0" end')
 
-      P90=$(curl -fsSG "${PROM_URL}/api/v1/query" \
-        --data-urlencode "query=histogram_quantile(0.90, sum(rate(coffee_menu_latency_seconds_bucket[${WIN}])) by (le))" \
-        | jq -r 'if (.data.result|length)>0 then (.data.result[0].value[1] | try (tonumber*1000) catch "NaN") else "NaN" end')
+          P90=$(curl -fsSG "${PROM_URL}/api/v1/query" \
+            --data-urlencode "query=histogram_quantile(0.90, sum(rate(coffee_menu_latency_seconds_bucket[${WIN}])) by (le))" \
+            | jq -r 'if (.data.result|length)>0 then (.data.result[0].value[1] | try (tonumber*1000) catch "NaN") else "NaN" end')
 
-      TARGETS=$(curl -fsS "${PROM_URL}/api/v1/targets" \
-        | jq -r '.data.activeTargets[]? | "\\(.labels.job) @ \\(.labels.instance): \\(.health)\\t\\(.lastError)"')
+          TARGETS=$(curl -fsS "${PROM_URL}/api/v1/targets" \
+            | jq -r '.data.activeTargets[]? | "\\(.labels.job) @ \\(.labels.instance): \\(.health)\\t\\(.lastError)"')
 
-      cat > metrics_prom_summary.txt <<EOF
-      Prometheus Monitoring Summary
-      =============================
-      Minikube IP : ${MINIKUBE_IP}
-      Window      : ${WIN}
+          cat > metrics_prom_summary.txt <<EOF
+          Prometheus Monitoring Summary
+          =============================
+          Minikube IP : ${MINIKUBE_IP}
+          Window      : ${WIN}
 
-      • requests  : ${REQ} in ${WIN}
-      • rps       : ${RPS}
-      • p90       : ${P90} ms
+          • requests  : ${REQ} in ${WIN}
+          • rps       : ${RPS}
+          • p90       : ${P90} ms
 
-      Active targets:
-      ${TARGETS}
+          Active targets:
+          ${TARGETS}
 
-      Prometheus UI: ${PROM_URL}
-      EOF
+          Prometheus UI: ${PROM_URL}
+          EOF
 
-      echo "== Summary =="
-      cat metrics_prom_summary.txt
-      '''
-          sh 'chmod +x ./monitor-prom-nodeport.sh && bash ./monitor-prom-nodeport.sh'
+          echo "== Summary =="
+          cat metrics_prom_summary.txt
+        '''
+        sh 'chmod +x ./monitor-prom-nodeport.sh && bash ./monitor-prom-nodeport.sh'
 
-          def report = sh(script: "cat metrics_prom_summary.txt", returnStdout: true)
+        // <<< IMPORTANT: wrap Groovy in 'script { }'
+        script {
+          def report = sh(script: "cat metrics_prom_summary.txt", returnStdout: true).trim()
 
           emailext(
             subject: "Monitoring summary (Prometheus, ${env.WIN})",
             body: """Hi Ajit,
 
-      Generated ${env.COUNT} requests to /v1/menu, then queried Prometheus:
+    Generated ${env.COUNT} requests to /v1/menu, then queried Prometheus:
 
-      ${report}
+    ${report}
 
-      Build URL: ${env.BUILD_URL}
-      """,
+    Build URL: ${env.BUILD_URL}
+    """,
             to: "${env.RECIPIENT}",
             attachLog: true
           )
         }
-        post {
-          failure {
-            sh '''
-              set +e
-              echo "==== Debug dump ===="
-              export KUBECONFIG="/var/jenkins_home/.kube/config"
-              kubectl get deploy,svc,pods -o wide
-              echo "---- coffee-api logs ----"
-              kubectl logs deploy/coffee-api --tail=200 || true
-              echo "---- coffee-prometheus logs ----"
-              kubectl logs deploy/coffee-prometheus --tail=200 || true
-            '''
-          }
+      }
+      post {
+        failure {
+          sh '''
+            set +e
+            echo "==== Debug dump ===="
+            export KUBECONFIG="/var/jenkins_home/.kube/config"
+            kubectl get deploy,svc,pods -o wide
+            echo "---- coffee-api logs ----"
+            kubectl logs deploy/coffee-api --tail=200 || true
+            echo "---- coffee-prometheus logs ----"
+            kubectl logs deploy/coffee-prometheus --tail=200 || true
+          '''
         }
       }
+    }
+
 
 
   }
