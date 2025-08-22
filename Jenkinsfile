@@ -148,37 +148,35 @@ pipeline {
       }
       steps {
         withCredentials([string(credentialsId: 'az-sp-json', variable: 'AZ_SP_JSON')]) {
-          sh(
-            shell: '/bin/bash',
-            script: '''
-              set -euo pipefail
+          sh '''
+            bash -euo pipefail <<'BASH'
+            CLIENT_ID=$(echo "$AZ_SP_JSON" | jq -r .appId)
+            CLIENT_SECRET=$(echo "$AZ_SP_JSON" | jq -r .password)
+            TENANT_ID=$(echo "$AZ_SP_JSON" | jq -r .tenant)
+            SUB_ID=$(echo "$AZ_SP_JSON" | jq -r .subscription)
 
-              CLIENT_ID=$(echo "$AZ_SP_JSON" | jq -r .appId)
-              CLIENT_SECRET=$(echo "$AZ_SP_JSON" | jq -r .password)
-              TENANT_ID=$(echo "$AZ_SP_JSON" | jq -r .tenant)
-              SUB_ID=$(echo "$AZ_SP_JSON" | jq -r .subscription)
+            echo "Logging in to Azure subscription: $SUB_ID"
+            az login --service-principal -u "$CLIENT_ID" -p "$CLIENT_SECRET" --tenant "$TENANT_ID" >/dev/null
+            az account set --subscription "$SUB_ID"
 
-              echo "Logging in to Azure subscription: $SUB_ID"
-              az login --service-principal -u "$CLIENT_ID" -p "$CLIENT_SECRET" --tenant "$TENANT_ID" >/dev/null
-              az account set --subscription "$SUB_ID"
+            VERSION="$(date +%Y.%m.%d).${BUILD_NUMBER}-sha${GIT_COMMIT:0:7}"
+            echo "$VERSION" > .version
+            echo "Version: $VERSION"
 
-              VERSION="$(date +%Y.%m.%d).${BUILD_NUMBER}-sha${GIT_COMMIT:0:7}"
-              echo "$VERSION" > .version
-              echo "Version: $VERSION"
+            az acr login -n "${ACR_NAME}"
 
-              az acr login -n "${ACR_NAME}"
+            docker build -t "${REGISTRY}/${APP}:${VERSION}" .
+            docker tag   "${REGISTRY}/${APP}:${VERSION}" "${REGISTRY}/${APP}:latest"
+            docker push  "${REGISTRY}/${APP}:${VERSION}"
+            docker push  "${REGISTRY}/${APP}:latest"
 
-              docker build -t "${REGISTRY}/${APP}:${VERSION}" .
-              docker tag   "${REGISTRY}/${APP}:${VERSION}" "${REGISTRY}/${APP}:latest"
-              docker push  "${REGISTRY}/${APP}:${VERSION}"
-              docker push  "${REGISTRY}/${APP}:latest"
-
-              echo "Pushed:"
-              echo "  ${REGISTRY}/${APP}:${VERSION}"
-              echo "  ${REGISTRY}/${APP}:latest"
-            '''
-          )
+            echo "Pushed:"
+            echo "  ${REGISTRY}/${APP}:${VERSION}"
+            echo "  ${REGISTRY}/${APP}:latest"
+            BASH
+              '''
         }
+
       }
       post {
         success {
